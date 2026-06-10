@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus — Agregador de Links</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #07090f;
+      --surface:     #0e1117;
+      --card:        #131720;
+      --card-hover:  #171e2b;
+      --border:      #1c2436;
+      --border-soft: #141a27;
+      --gold:        #c8a355;
+      --gold-dim:    rgba(200,163,85,.14);
+      --gold-glow:   rgba(200,163,85,.22);
+      --amber:       #e6b96a;
+      --text:        #ddd9cf;
+      --text-soft:   #8e96a8;
+      --accent:      #4f7ef8;
+      --danger:      #e05252;
+      --success:     #3ecf8e;
+      --radius:      12px;
+      --radius-lg:   18px;
+      --font-head:   'Syne', system-ui, sans-serif;
+      --font-body:   'DM Sans', system-ui, sans-serif;
+      --font-mono:   'DM Mono', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 70% 55% at 15% -5%, rgba(200,163,85,.09) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 85% 105%, rgba(79,126,248,.07) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(7,9,15,.88);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
+      display: flex; align-items: center; gap: 20px; height: 58px;
+    }
+    .logo {
+      font-family: var(--font-head);
+      font-size: 1.35rem; font-weight: 800;
+      letter-spacing: -.03em;
+      background: linear-gradient(125deg, var(--amber) 20%, #fff 90%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      flex-shrink: 0;
+    }
+    .topbar-divider { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+
+    .search-wrap { flex: 1; max-width: 360px; position: relative; }
+    .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-soft); pointer-events: none; }
+    #search {
+      width: 100%; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-family: var(--font-body); font-size: .85rem;
+      padding: 8px 14px 8px 36px; outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    #search:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
+    #search::placeholder { color: var(--text-soft); }
+
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+    .btn-primary {
+      background: var(--gold); color: #060810;
+      font-family: var(--font-body); font-weight: 600;
+      border: none; border-radius: 8px; padding: 8px 18px;
+      cursor: pointer; white-space: nowrap; font-size: .82rem;
+      display: flex; align-items: center; gap: 6px;
+      transition: background .18s, transform .15s, box-shadow .18s;
+    }
+    .btn-primary:hover { background: var(--amber); transform: translateY(-1px); box-shadow: 0 4px 18px rgba(200,163,85,.3); }
+
+    .btn-ghost {
+      background: transparent; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text-soft); font-family: var(--font-body); font-size: .82rem;
+      padding: 7px 14px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+    .btn-ghost:hover { border-color: var(--text-soft); color: var(--text); background: var(--surface); }
+
+    /* ── LAYOUT ── */
+    .layout { display: flex; position: relative; z-index: 1; }
+
+    /* ── SIDEBAR ── */
+    aside {
+      width: 220px; flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      height: calc(100vh - 58px); position: sticky; top: 58px;
+      overflow-y: auto; padding: 20px 12px 30px;
+      display: flex; flex-direction: column; gap: 2px;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .sidebar-label {
+      font-size: .68rem; color: var(--text-soft); letter-spacing: .13em;
+      text-transform: uppercase; padding: 6px 10px 8px; font-family: var(--font-mono);
+    }
+    .nav-btn {
+      background: transparent; border: none; border-radius: 8px;
+      color: var(--text-soft); font-family: var(--font-body); font-size: .84rem;
+      padding: 8px 10px; text-align: left; cursor: pointer; width: 100%;
+      display: flex; align-items: center; gap: 8px;
+      transition: background .15s, color .15s;
+    }
+    .nav-btn:hover { background: var(--surface); color: var(--text); }
+    .nav-btn.active { background: var(--gold-dim); color: var(--amber); font-weight: 500; }
+    .nav-btn .nav-icon { font-size: .95rem; flex-shrink: 0; }
+    .nav-btn .nav-count {
+      margin-left: auto; background: var(--surface); border-radius: 20px;
+      padding: 1px 7px; font-size: .7rem; color: var(--text-soft); font-family: var(--font-mono);
+    }
+    .nav-btn.active .nav-count { background: rgba(200,163,85,.2); color: var(--gold); }
+
+    .sidebar-sep { height: 1px; background: var(--border); margin: 8px 6px; }
+
+    .add-section-row { padding: 6px 4px 0; display: flex; gap: 6px; }
+    #new-section-input {
+      flex: 1; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 7px; color: var(--text); font-family: var(--font-body);
+      font-size: .78rem; padding: 6px 9px; outline: none; min-width: 0;
+      transition: border-color .2s;
+    }
+    #new-section-input:focus { border-color: var(--gold); }
+    #new-section-input::placeholder { color: var(--text-soft); }
+    .btn-add-small {
+      background: var(--gold-dim); border: 1px solid rgba(200,163,85,.25);
+      border-radius: 7px; color: var(--gold); cursor: pointer; padding: 0 9px;
+      font-size: 1rem; line-height: 1; transition: background .15s;
+    }
+    .btn-add-small:hover { background: var(--gold-glow); }
+
+    /* ── MAIN CONTENT ── */
+    .content { flex: 1; padding: 36px 40px; min-width: 0; }
+
+    /* ── PAGE HEADER ── */
+    .page-header {
+      display: flex; align-items: flex-end; justify-content: space-between;
+      gap: 16px; margin-bottom: 32px; flex-wrap: wrap;
+    }
+    .page-title {
+      font-family: var(--font-head); font-size: 1.75rem; font-weight: 700;
+      letter-spacing: -.02em; line-height: 1;
+    }
+    .page-meta { font-size: .8rem; color: var(--text-soft); margin-top: 5px; font-family: var(--font-mono); }
+
+    /* ── SECTIONS (all-view) ── */
+    .section-block { margin-bottom: 44px; }
+    .section-header {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 16px; padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-icon { font-size: 1.1rem; }
+    .section-name {
+      font-family: var(--font-head); font-size: 1.1rem; font-weight: 600;
+      letter-spacing: -.01em;
+    }
+    .section-count {
+      font-family: var(--font-mono); font-size: .72rem; color: var(--text-soft);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 2px 9px;
+    }
+    .section-actions { margin-left: auto; display: flex; gap: 6px; }
+    .icon-btn {
+      background: transparent; border: 1px solid transparent; border-radius: 7px;
+      color: var(--text-soft); cursor: pointer; padding: 5px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .icon-btn:hover.edit   { background: rgba(79,126,248,.12); color: var(--accent); border-color: rgba(79,126,248,.25); }
+    .icon-btn:hover.del    { background: rgba(224,82,82,.12);  color: var(--danger); border-color: rgba(224,82,82,.25); }
+    .icon-btn:hover.add    { background: rgba(200,163,85,.12); color: var(--gold);   border-color: rgba(200,163,85,.25); }
+    .icon-btn:hover.move   { background: var(--surface); color: var(--text); border-color: var(--border); }
+
+    /* ── LINK GRID ── */
+    .link-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+
+    /* ── LINK CARD ── */
+    .link-card {
+      background: var(--card); border: 1px solid var(--border-soft);
+      border-radius: var(--radius); padding: 16px 18px;
+      display: flex; flex-direction: column; gap: 8px;
+      transition: border-color .2s, background .2s, transform .2s;
+      animation: fadeUp .3s ease both;
+      position: relative;
+    }
+    .link-card:hover { border-color: var(--border); background: var(--card-hover); transform: translateY(-1px); }
+    .link-card.pinned { border-left: 2px solid var(--gold); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .card-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .card-favicon {
+      width: 16px; height: 16px; border-radius: 3px; flex-shrink: 0;
+      background: var(--surface); display: flex; align-items: center; justify-content: center;
+      font-size: .65rem; overflow: hidden;
+    }
+    .card-favicon img { width: 100%; height: 100%; object-fit: contain; }
+    .card-title {
+      font-family: var(--font-head); font-size: .95rem; font-weight: 600;
+      line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .card-actions { display: flex; gap: 2px; flex-shrink: 0; }
+    .card-pin {
+      position: absolute; top: 10px; right: 10px;
+      font-size: .7rem; color: var(--gold); opacity: .7;
+    }
+
+    .card-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+    .tag {
+      font-size: .68rem; border-radius: 4px; padding: 2px 8px;
+      font-family: var(--font-mono); letter-spacing: .03em; font-weight: 500;
+    }
+
+    .card-desc { font-size: .8rem; color: var(--text-soft); line-height: 1.55; }
+
+    .card-link a {
+      font-size: .76rem; color: var(--gold); text-decoration: none;
+      word-break: break-all; display: flex; align-items: center; gap: 5px;
+      transition: color .15s; font-family: var(--font-mono);
+    }
+    .card-link a:hover { color: var(--amber); }
+
+    .card-meta { display: flex; align-items: center; gap: 10px; margin-top: 2px; }
+    .card-section-badge {
+      font-size: .67rem; color: var(--text-soft); background: var(--surface);
+      border: 1px solid var(--border); border-radius: 4px; padding: 2px 7px;
+      font-family: var(--font-mono);
+    }
+
+    /* ── EMPTY ── */
+    .empty {
+      grid-column: 1/-1; text-align: center; padding: 64px 20px; color: var(--text-soft);
+    }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 14px; opacity: .4; }
+    .empty h3 { font-family: var(--font-head); font-size: 1.2rem; color: var(--text); margin-bottom: 6px; }
+    .empty p { font-size: .83rem; }
+
+    /* ── MODAL ── */
+    .backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.72);
+      backdrop-filter: blur(8px); z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .22s;
+      padding: 16px;
+    }
+    .backdrop.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 32px;
+      width: 100%; max-width: 520px;
+      box-shadow: 0 40px 80px rgba(0,0,0,.6);
+      transform: translateY(18px) scale(.97); transition: transform .22s;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .backdrop.open .modal { transform: translateY(0) scale(1); }
+    .modal-title { font-family: var(--font-head); font-size: 1.35rem; font-weight: 700; margin-bottom: 24px; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .form-group label { font-size: .73rem; color: var(--text-soft); letter-spacing: .08em; text-transform: uppercase; font-family: var(--font-mono); }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 9px; color: var(--text);
+      font-family: var(--font-body); font-size: .88rem;
+      padding: 10px 13px; outline: none; width: 100%;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .form-group textarea { resize: vertical; min-height: 72px; }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
+    .form-group select option { background: var(--surface); }
+    .form-group input[type="checkbox"] { width: auto; accent-color: var(--gold); }
+    .check-row { flex-direction: row; align-items: center; gap: 10px; }
+
+    .tags-input-wrap { position: relative; }
+    .tags-preview { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+    .btn-cancel {
+      background: transparent; border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text-soft); font-family: var(--font-body); font-size: .85rem;
+      padding: 9px 18px; cursor: pointer; transition: border-color .15s, color .15s;
+    }
+    .btn-cancel:hover { border-color: var(--text-soft); color: var(--text); }
+    .btn-save {
+      background: var(--gold); border: none; border-radius: 8px;
+      color: #060810; font-family: var(--font-body); font-weight: 600;
+      font-size: .85rem; padding: 9px 22px; cursor: pointer;
+      transition: background .15s, transform .15s;
+    }
+    .btn-save:hover { background: var(--amber); transform: translateY(-1px); }
+
+    /* Confirm modal */
+    .confirm-body { font-size: .88rem; color: var(--text-soft); margin-bottom: 22px; line-height: 1.6; }
+    .btn-danger { background: var(--danger); border: none; border-radius: 8px; color: #fff; font-family: var(--font-body); font-weight: 600; font-size: .85rem; padding: 9px 22px; cursor: pointer; transition: opacity .15s; }
+    .btn-danger:hover { opacity: .85; }
+
+    /* Section rename modal */
+    .section-emoji-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .emoji-opt {
+      font-size: 1.2rem; padding: 6px 8px; border-radius: 7px; cursor: pointer;
+      border: 2px solid transparent; background: var(--surface);
+      transition: border-color .15s, background .15s;
+    }
+    .emoji-opt.selected { border-color: var(--gold); background: var(--gold-dim); }
+
+    /* ── TAG COLORS ── */
+    .t0 { background: rgba(200,163,85,.14); color: #d4a843; }
+    .t1 { background: rgba(79,126,248,.14); color: #6b9bfb; }
+    .t2 { background: rgba(62,207,142,.14); color: #3ecf8e; }
+    .t3 { background: rgba(224,82,82,.14);  color: #e87272; }
+    .t4 { background: rgba(168,85,247,.14); color: #c084fc; }
+    .t5 { background: rgba(251,146,60,.14); color: #fb923c; }
+    .t6 { background: rgba(20,184,166,.14); color: #2dd4bf; }
+    .t7 { background: rgba(236,72,153,.14); color: #f472b6; }
+
+    /* ── SECTION COLOR ACCENTS ── */
+    .s0 { color: #d4a843; }
+    .s1 { color: #6b9bfb; }
+    .s2 { color: #3ecf8e; }
+    .s3 { color: #e87272; }
+    .s4 { color: #c084fc; }
+    .s5 { color: #fb923c; }
+    .s6 { color: #2dd4bf; }
+    .s7 { color: #f472b6; }
+
+    /* ── TOAST ── */
+    .toast-wrap { position: fixed; bottom: 24px; right: 24px; z-index: 300; display: flex; flex-direction: column; gap: 7px; }
+    .toast {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 9px; padding: 11px 16px; font-size: .83rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,.45); animation: toastIn .25s ease;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .toast.ok  { border-left: 3px solid var(--success); }
+    .toast.err { border-left: 3px solid var(--danger); }
+    @keyframes toastIn { from { opacity:0; transform:translateX(14px); } to { opacity:1; transform:translateX(0); } }
+
+    /* ── DRAG HANDLE ── */
+    .drag-handle { cursor: grab; touch-action: none; }
+    .drag-handle:active { cursor: grabbing; }
+    .dragging { opacity: .5; }
+    .drag-over { outline: 2px dashed var(--gold); outline-offset: 4px; border-radius: var(--radius); }
+
+    /* ── SORT CONTROLS ── */
+    .section-sort {
+      display: flex; align-items: center; gap: 6px;
+      font-size: .72rem; color: var(--text-soft); font-family: var(--font-mono);
+    }
+    .sort-btn {
+      background: transparent; border: 1px solid var(--border); border-radius: 5px;
+      color: var(--text-soft); font-family: var(--font-mono); font-size: .7rem;
+      padding: 3px 8px; cursor: pointer; transition: border-color .15s, color .15s;
+    }
+    .sort-btn:hover, .sort-btn.active { border-color: var(--gold); color: var(--gold); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 780px) {
+      .topbar { padding: 0 14px; gap: 10px; }
+      .logo { font-size: 1.1rem; }
+      .topbar-divider { display: none; }
+      .search-wrap { max-width: 100%; }
+      aside { display: none; }
+      .content { padding: 20px 14px; }
+      .link-grid { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<nav class="topbar">
+  <span class="logo">⬡ Nexus</span>
+  <div class="topbar-divider"></div>
+  <div class="search-wrap">
+    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+    </svg>
+    <input id="search" type="text" placeholder="Buscar links, seções, tags…" autocomplete="off" />
+  </div>
+  <div class="topbar-right">
+    <button class="btn-ghost" id="btn-new-section">
+      <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+      Seção
+    </button>
+    <button class="btn-primary" id="btn-new-link">
+      <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      Novo Link
+    </button>
+  </div>
+</nav>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside id="aside">
+    <div class="sidebar-label">Navegar</div>
+    <div id="nav-list"></div>
+    <div class="sidebar-sep"></div>
+    <div class="sidebar-label">Nova Seção</div>
+    <div class="add-section-row">
+      <input id="new-section-input" type="text" placeholder="Nome da seção…" maxlength="40" />
+      <button class="btn-add-small" id="btn-sidebar-add-section" title="Criar">+</button>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <main class="content" id="content"></main>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<!-- LINK MODAL -->
+<div class="backdrop" id="link-modal">
+  <div class="modal">
+    <div class="modal-title" id="link-modal-title">Novo Link</div>
+    <div class="form-group">
+      <label>Título *</label>
+      <input id="f-title" type="text" placeholder="Ex: Moodle da Faculdade" required />
+    </div>
+    <div class="form-group">
+      <label>URL *</label>
+      <input id="f-url" type="url" placeholder="https://…" required />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Seção *</label>
+        <select id="f-section"></select>
+      </div>
+      <div class="form-group">
+        <label>Tags <span style="color:var(--text-soft);font-size:.7rem">(vírgula)</span></label>
+        <input id="f-tags" type="text" placeholder="ex: aula, pdf, oficial" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Descrição <span style="opacity:.5">(opcional)</span></label>
+      <textarea id="f-desc" placeholder="Para que serve este link?"></textarea>
+    </div>
+    <div class="form-group check-row">
+      <input type="checkbox" id="f-pin" />
+      <label for="f-pin" style="text-transform:none;letter-spacing:0;font-size:.84rem;color:var(--text)">Fixar este link no topo da seção</label>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" data-close="link-modal">Cancelar</button>
+      <button type="button" class="btn-save" id="btn-save-link">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION MODAL -->
+<div class="backdrop" id="section-modal">
+  <div class="modal">
+    <div class="modal-title" id="section-modal-title">Nova Seção</div>
+    <div class="form-group">
+      <label>Nome da seção *</label>
+      <input id="fs-name" type="text" placeholder="Ex: Portais Acadêmicos" maxlength="48" />
+    </div>
+    <div class="form-group">
+      <label>Ícone</label>
+      <div class="section-emoji-row" id="emoji-picker"></div>
+    </div>
+    <div class="form-group">
+      <label>Descrição <span style="opacity:.5">(opcional)</span></label>
+      <input id="fs-desc" type="text" placeholder="Sobre o que é essa seção?" maxlength="80" />
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" data-close="section-modal">Cancelar</button>
+      <button type="button" class="btn-save" id="btn-save-section">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="backdrop" id="confirm-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title" id="confirm-title">Confirmar</div>
+    <div class="confirm-body" id="confirm-body"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" data-close="confirm-modal">Cancelar</button>
+      <button type="button" class="btn-danger" id="confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   CONSTANTS & DEFAULTS
+════════════════════════════════════════ */
+const EMOJIS = ['📚','🎓','🌐','💻','🔗','📝','🧑‍💻','📊','🗓️','🔬','💼','🎯','📦','⚡','🛠️','🎨','📡','🏆','📌','🤝'];
+
+const DEFAULT_SECTIONS = [
+  { id: uid(), name: 'Aulas & Disciplinas',  icon: '🎓', desc: 'Materiais e aulas de cada matéria', order: 0 },
+  { id: uid(), name: 'Portais Acadêmicos',   icon: '🌐', desc: 'Sistemas da faculdade', order: 1 },
+  { id: uid(), name: 'Ferramentas & Apps',   icon: '🛠️', desc: 'Utilitários do dia a dia', order: 2 },
+  { id: uid(), name: 'Pesquisa & Artigos',   icon: '🔬', desc: 'Bases científicas e bibliotecas', order: 3 },
+  { id: uid(), name: 'Grupos & Comunicação', icon: '🤝', desc: 'Grupos e canais da turma', order: 4 },
+  { id: uid(), name: 'Estágios & Carreira',  icon: '💼', desc: 'Vagas, portfólio, currículo', order: 5 },
+];
+
+const DEFAULT_LINKS = (() => {
+  const secs = JSON.parse(localStorage.getItem('nx2_sections') || 'null') || DEFAULT_SECTIONS;
+  const byName = n => secs.find(s => s.name === n)?.id || secs[0].id;
+  return [
+    { id: uid(), title: 'Portal do Aluno',    url: 'https://exemplo.edu.br/portal',     section: byName('Portais Acadêmicos'),   desc: 'Notas, histórico e documentos.', tags: ['portal','oficial'], pinned: true,  order: 0 },
+    { id: uid(), title: 'Google Classroom',   url: 'https://classroom.google.com',      section: byName('Aulas & Disciplinas'),  desc: 'Atividades e materiais.', tags: ['aulas','google'], pinned: false, order: 0 },
+    { id: uid(), title: 'Overleaf',           url: 'https://overleaf.com',              section: byName('Ferramentas & Apps'),   desc: 'Editor LaTeX colaborativo.', tags: ['latex','escrita'], pinned: false, order: 0 },
+    { id: uid(), title: 'Biblioteca Digital', url: 'https://bdtd.ibict.br',             section: byName('Pesquisa & Artigos'),   desc: 'Teses e dissertações.', tags: ['pesquisa'], pinned: false, order: 0 },
+    { id: uid(), title: 'GitHub',             url: 'https://github.com',                section: byName('Ferramentas & Apps'),   desc: 'Repositórios de código.', tags: ['código','dev'], pinned: true, order: 1 },
+    { id: uid(), title: 'WhatsApp da Turma',  url: 'https://chat.whatsapp.com/example', section: byName('Grupos & Comunicação'), desc: 'Grupo da turma.', tags: ['turma'], pinned: false, order: 0 },
+    { id: uid(), title: 'LinkedIn',           url: 'https://linkedin.com',              section: byName('Estágios & Carreira'),  desc: 'Rede profissional.', tags: ['carreira','vagas'], pinned: false, order: 0 },
+  ];
+})();
+
+/* ════════════════════════════════════════
+   STATE
+════════════════════════════════════════ */
+let sections  = load('nx2_sections', DEFAULT_SECTIONS);
+let links     = load('nx2_links', DEFAULT_LINKS);
+let activeNav = 'all'; // 'all' | section.id
+let editLinkId    = null;
+let editSectionId = null;
+let selectedEmoji = EMOJIS[0];
+let sortMode      = 'default'; // 'default'|'az'|'za'
+let confirmCb     = null;
+
+/* ════════════════════════════════════════
+   STORAGE
+════════════════════════════════════════ */
+function load(key, def) {
+  try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : def; } catch { return def; }
+}
+function save() {
+  localStorage.setItem('nx2_sections', JSON.stringify(sections));
+  localStorage.setItem('nx2_links', JSON.stringify(links));
+}
+function uid() { return Math.random().toString(36).slice(2, 10); }
+
+/* ════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════ */
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function sectionColorIdx(sid) {
+  const i = sections.findIndex(s => s.id === sid);
+  return (i >= 0 ? i : 0) % 8;
+}
+function tagColor(tag) {
+  let h = 0; for (let c of tag) h = (h * 31 + c.charCodeAt(0)) & 0xff;
+  return `t${h % 8}`;
+}
+function domainOf(url) {
+  try { return new URL(url).hostname.replace('www.',''); } catch { return ''; }
+}
+function faviconUrl(url) {
+  try { const u = new URL(url); return `https://www.google.com/s2/favicons?sz=32&domain=${u.hostname}`; } catch { return ''; }
+}
+function parseTags(str) {
+  return str.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+}
+
+/* ════════════════════════════════════════
+   RENDER: Sidebar nav
+════════════════════════════════════════ */
+function renderNav() {
+  const counts = {};
+  links.forEach(l => { counts[l.section] = (counts[l.section] || 0) + 1; });
+
+  const makeBtn = (key, icon, label, n) => {
+    const b = document.createElement('button');
+    b.className = 'nav-btn' + (activeNav === key ? ' active' : '');
+    b.dataset.nav = key;
+    b.innerHTML = `<span class="nav-icon">${icon}</span>${esc(label)}<span class="nav-count">${n}</span>`;
+    b.addEventListener('click', () => { activeNav = key; render(); });
+    return b;
+  };
+
+  const list = document.getElementById('nav-list');
+  list.innerHTML = '';
+  list.appendChild(makeBtn('all', '🔗', 'Todos os Links', links.length));
+  const sep = document.createElement('div'); sep.className = 'sidebar-sep';
+  list.appendChild(sep);
+  sections.sort((a,b) => a.order - b.order).forEach(s => list.appendChild(makeBtn(s.id, s.icon, s.name, counts[s.id] || 0)));
+}
+
+/* ════════════════════════════════════════
+   RENDER: Main content
+════════════════════════════════════════ */
+function renderContent() {
+  const content = document.getElementById('content');
+  const q = document.getElementById('search').value.toLowerCase().trim();
+
+  // Filter links
+  let filtered = links;
+  if (activeNav !== 'all') filtered = filtered.filter(l => l.section === activeNav);
+  if (q) filtered = filtered.filter(l =>
+    l.title.toLowerCase().includes(q) ||
+    (l.desc||'').toLowerCase().includes(q) ||
+    l.url.toLowerCase().includes(q) ||
+    (l.tags||[]).some(t => t.includes(q)) ||
+    (sections.find(s=>s.id===l.section)?.name||'').toLowerCase().includes(q)
+  );
+
+  // Sort
+  if (sortMode === 'az') filtered = [...filtered].sort((a,b) => a.title.localeCompare(b.title,'pt'));
+  if (sortMode === 'za') filtered = [...filtered].sort((a,b) => b.title.localeCompare(a.title,'pt'));
+
+  const total = filtered.length;
+
+  if (activeNav === 'all' && !q) {
+    // Group by section
+    content.innerHTML = '';
+
+    const header = document.createElement('div');
+    header.className = 'page-header';
+    header.innerHTML = `
+      <div>
+        <div class="page-title">Todos os Links</div>
+        <div class="page-meta">${total} link${total!==1?'s':''} em ${sections.length} seções</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="section-sort">
+          <span>Ordenar:</span>
+          <button class="sort-btn${sortMode==='default'?' active':''}" data-sort="default">Padrão</button>
+          <button class="sort-btn${sortMode==='az'?' active':''}" data-sort="az">A→Z</button>
+          <button class="sort-btn${sortMode==='za'?' active':''}" data-sort="za">Z→A</button>
+        </div>
+      </div>`;
+    header.querySelectorAll('.sort-btn').forEach(b => b.addEventListener('click', () => { sortMode = b.dataset.sort; renderContent(); }));
+    content.appendChild(header);
+
+    sections.sort((a,b) => a.order - b.order).forEach(sec => {
+      let secLinks = filtered.filter(l => l.section === sec.id);
+      if (!secLinks.length) return;
+      // Pinned first
+      secLinks = [...secLinks.filter(l=>l.pinned), ...secLinks.filter(l=>!l.pinned)];
+
+      const block = document.createElement('div');
+      block.className = 'section-block';
+      block.dataset.sid = sec.id;
+
+      const ci = sectionColorIdx(sec.id);
+      block.innerHTML = `
+        <div class="section-header">
+          <span class="section-icon s${ci}">${sec.icon}</span>
+          <span class="section-name">${esc(sec.name)}</span>
+          <span class="section-count">${secLinks.length}</span>
+          <div class="section-actions">
+            <button class="icon-btn add" data-sid="${sec.id}" title="Adicionar link aqui">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+            <button class="icon-btn edit sec-edit" data-sid="${sec.id}" title="Renomear seção">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button class="icon-btn del sec-del" data-sid="${sec.id}" title="Remover seção">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="link-grid" id="grid-${sec.id}"></div>`;
+
+      block.querySelector('.icon-btn.add').addEventListener('click', () => openAddLink(sec.id));
+      block.querySelector('.sec-edit').addEventListener('click', () => openEditSection(sec.id));
+      block.querySelector('.sec-del').addEventListener('click', () => confirmDeleteSection(sec.id));
+      content.appendChild(block);
+
+      const grid = document.getElementById(`grid-${sec.id}`);
+      renderCards(secLinks, grid, sec.id);
+    });
+
+    if (!total) {
+      const empty = document.createElement('div');
+      empty.innerHTML = `<div class="empty"><div class="empty-icon">🔗</div><h3>Sem links ainda</h3><p>Clique em "Novo Link" para começar.</p></div>`;
+      content.appendChild(empty);
+    }
+
+  } else {
+    // Single section or search view
+    const sec = sections.find(s => s.id === activeNav);
+    const title = q ? `Resultados para "${q}"` : (sec ? sec.name : 'Todos os Links');
+    const ci = sec ? sectionColorIdx(sec.id) : 0;
+
+    // Pinned first
+    let sorted = [...filtered.filter(l=>l.pinned), ...filtered.filter(l=>!l.pinned)];
+
+    content.innerHTML = `
+      <div class="page-header">
+        <div>
+          <div class="page-title">${sec ? `<span class="s${ci}">${sec.icon}</span> ` : ''}${esc(title)}</div>
+          ${sec?.desc ? `<div class="page-meta">${esc(sec.desc)}</div>` : `<div class="page-meta">${total} link${total!==1?'s':''}</div>`}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="section-sort">
+            <span>Ordenar:</span>
+            <button class="sort-btn${sortMode==='default'?' active':''}" data-sort="default">Padrão</button>
+            <button class="sort-btn${sortMode==='az'?' active':''}" data-sort="az">A→Z</button>
+            <button class="sort-btn${sortMode==='za'?' active':''}" data-sort="za">Z→A</button>
+          </div>
+          ${sec ? `<button class="btn-primary" id="content-add-btn" style="font-size:.78rem;padding:7px 14px">+ Link nesta seção</button>` : ''}
+        </div>
+      </div>
+      <div class="link-grid" id="main-grid"></div>`;
+
+    content.querySelectorAll('.sort-btn').forEach(b => b.addEventListener('click', () => { sortMode = b.dataset.sort; renderContent(); }));
+    document.getElementById('content-add-btn')?.addEventListener('click', () => openAddLink(sec.id));
+
+    const grid = document.getElementById('main-grid');
+    if (!sorted.length) {
+      grid.innerHTML = `<div class="empty"><div class="empty-icon">${q?'🔍':'🔗'}</div><h3>${q?'Nenhum resultado':'Seção vazia'}</h3><p>${q?'Tente outro termo.':'Adicione o primeiro link.'}</p></div>`;
+    } else {
+      renderCards(sorted, grid, sec?.id);
+    }
+  }
+}
+
+/* ════════════════════════════════════════
+   RENDER: Cards
+════════════════════════════════════════ */
+function renderCards(list, grid, sectionId) {
+  grid.innerHTML = '';
+  const showSection = activeNav === 'all' && !document.getElementById('search').value.trim();
+
+  list.forEach((l, i) => {
+    const sec = sections.find(s => s.id === l.section);
+    const ci = sectionColorIdx(l.section);
+    const favicon = faviconUrl(l.url);
+    const domain  = domainOf(l.url);
+    const tags = (l.tags||[]).map(t => `<span class="tag ${tagColor(t)}">${esc(t)}</span>`).join('');
+
+    const card = document.createElement('div');
+    card.className = 'link-card' + (l.pinned ? ' pinned' : '');
+    card.style.animationDelay = `${i * 30}ms`;
+    card.dataset.id = l.id;
+    card.innerHTML = `
+      ${l.pinned ? `<span class="card-pin" title="Fixado">📌</span>` : ''}
+      <div class="card-top">
+        <div class="card-title-row">
+          <div class="card-favicon">
+            ${favicon ? `<img src="${favicon}" alt="" onerror="this.parentElement.textContent='🔗'" />` : '🔗'}
+          </div>
+          <span class="card-title" title="${esc(l.title)}">${esc(l.title)}</span>
+        </div>
+        <div class="card-actions">
+          <button class="icon-btn add" data-id="${l.id}" title="Fixar/Desafixar">
+            ${l.pinned
+              ? `<svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>`
+              : `<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>`}
+          </button>
+          <button class="icon-btn edit" data-id="${l.id}" title="Editar">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+          <button class="icon-btn del" data-id="${l.id}" title="Remover">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+              <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      ${tags ? `<div class="card-tags">${tags}</div>` : ''}
+      ${l.desc ? `<p class="card-desc">${esc(l.desc)}</p>` : ''}
+      <div class="card-link">
+        <a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">
+          <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          ${esc(domain || l.url.replace(/^https?:\/\//,'').slice(0,55))}
+        </a>
+      </div>
+      ${!showSection && sec ? `<div class="card-meta"><span class="card-section-badge">${esc(sec.icon)} ${esc(sec.name)}</span></div>` : ''}`;
+
+    card.querySelector('.icon-btn.add').addEventListener('click', () => togglePin(l.id));
+    card.querySelector('.icon-btn.edit').addEventListener('click', () => openEditLink(l.id));
+    card.querySelector('.icon-btn.del').addEventListener('click', () => confirmDeleteLink(l.id));
+    grid.appendChild(card);
+  });
+}
+
+function render() { renderNav(); renderContent(); }
+
+/* ════════════════════════════════════════
+   LINK MODAL
+════════════════════════════════════════ */
+function populateSectionSelect(selected) {
+  const sel = document.getElementById('f-section');
+  sel.innerHTML = sections.sort((a,b)=>a.order-b.order).map(s =>
+    `<option value="${s.id}"${s.id===selected?' selected':''}>${esc(s.icon)} ${esc(s.name)}</option>`
+  ).join('');
+}
+
+function openAddLink(sectionId) {
+  editLinkId = null;
+  document.getElementById('link-modal-title').textContent = 'Novo Link';
+  document.getElementById('f-title').value = '';
+  document.getElementById('f-url').value   = '';
+  document.getElementById('f-desc').value  = '';
+  document.getElementById('f-tags').value  = '';
+  document.getElementById('f-pin').checked = false;
+  populateSectionSelect(sectionId || (activeNav !== 'all' ? activeNav : sections[0]?.id));
+  openModal('link-modal');
+  setTimeout(() => document.getElementById('f-title').focus(), 50);
+}
+
+function openEditLink(id) {
+  const l = links.find(x => x.id === id);
+  if (!l) return;
+  editLinkId = id;
+  document.getElementById('link-modal-title').textContent = 'Editar Link';
+  document.getElementById('f-title').value = l.title;
+  document.getElementById('f-url').value   = l.url;
+  document.getElementById('f-desc').value  = l.desc || '';
+  document.getElementById('f-tags').value  = (l.tags||[]).join(', ');
+  document.getElementById('f-pin').checked = !!l.pinned;
+  populateSectionSelect(l.section);
+  openModal('link-modal');
+  setTimeout(() => document.getElementById('f-title').focus(), 50);
+}
+
+document.getElementById('btn-save-link').addEventListener('click', () => {
+  const title   = document.getElementById('f-title').value.trim();
+  const url     = document.getElementById('f-url').value.trim();
+  const section = document.getElementById('f-section').value;
+  const desc    = document.getElementById('f-desc').value.trim();
+  const tags    = parseTags(document.getElementById('f-tags').value);
+  const pinned  = document.getElementById('f-pin').checked;
+
+  if (!title) { toast('Título obrigatório.','err'); return; }
+  if (!url)   { toast('URL obrigatória.','err'); return; }
+  try { new URL(url); } catch { toast('URL inválida.','err'); return; }
+  if (!section) { toast('Escolha uma seção.','err'); return; }
+
+  if (editLinkId) {
+    const idx = links.findIndex(l => l.id === editLinkId);
+    if (idx > -1) links[idx] = { ...links[idx], title, url, section, desc, tags, pinned };
+    toast('Link atualizado!');
+  } else {
+    links.unshift({ id: uid(), title, url, section, desc, tags, pinned, order: 0 });
+    toast('Link adicionado!');
+  }
+  save(); closeModal('link-modal'); render();
+});
+
+/* ════════════════════════════════════════
+   SECTION MODAL
+════════════════════════════════════════ */
+function buildEmojiPicker(selected) {
+  selectedEmoji = selected || EMOJIS[0];
+  const picker = document.getElementById('emoji-picker');
+  picker.innerHTML = EMOJIS.map(e =>
+    `<span class="emoji-opt${e===selectedEmoji?' selected':''}" data-emoji="${e}">${e}</span>`
+  ).join('');
+  picker.querySelectorAll('.emoji-opt').forEach(el => {
+    el.addEventListener('click', () => {
+      selectedEmoji = el.dataset.emoji;
+      picker.querySelectorAll('.emoji-opt').forEach(x => x.classList.remove('selected'));
+      el.classList.add('selected');
+    });
+  });
+}
+
+function openAddSection() {
+  editSectionId = null;
+  document.getElementById('section-modal-title').textContent = 'Nova Seção';
+  document.getElementById('fs-name').value = '';
+  document.getElementById('fs-desc').value = '';
+  buildEmojiPicker(EMOJIS[0]);
+  openModal('section-modal');
+  setTimeout(() => document.getElementById('fs-name').focus(), 50);
+}
+
+function openEditSection(id) {
+  const sec = sections.find(s => s.id === id);
+  if (!sec) return;
+  editSectionId = id;
+  document.getElementById('section-modal-title').textContent = 'Editar Seção';
+  document.getElementById('fs-name').value = sec.name;
+  document.getElementById('fs-desc').value = sec.desc || '';
+  buildEmojiPicker(sec.icon);
+  openModal('section-modal');
+  setTimeout(() => document.getElementById('fs-name').focus(), 50);
+}
+
+document.getElementById('btn-save-section').addEventListener('click', () => {
+  const name = document.getElementById('fs-name').value.trim();
+  const desc = document.getElementById('fs-desc').value.trim();
+  if (!name) { toast('Nome da seção obrigatório.','err'); return; }
+
+  if (editSectionId) {
+    const idx = sections.findIndex(s => s.id === editSectionId);
+    if (idx > -1) sections[idx] = { ...sections[idx], name, icon: selectedEmoji, desc };
+    toast('Seção atualizada!');
+  } else {
+    const maxOrder = sections.reduce((m,s) => Math.max(m, s.order), -1);
+    sections.push({ id: uid(), name, icon: selectedEmoji, desc, order: maxOrder + 1 });
+    toast('Seção criada!');
+  }
+  save(); closeModal('section-modal'); render();
+});
+
+/* Sidebar quick-add section */
+function sidebarAddSection() {
+  const inp = document.getElementById('new-section-input');
+  const name = inp.value.trim();
+  if (!name) return;
+  if (sections.find(s => s.name.toLowerCase() === name.toLowerCase())) { toast('Seção já existe.','err'); return; }
+  const maxOrder = sections.reduce((m,s) => Math.max(m, s.order), -1);
+  sections.push({ id: uid(), name, icon: '🔗', desc: '', order: maxOrder + 1 });
+  save(); inp.value = ''; render(); toast(`Seção "${name}" criada.`);
+}
+
+/* ════════════════════════════════════════
+   DELETE / CONFIRM
+════════════════════════════════════════ */
+function confirmDeleteLink(id) {
+  const l = links.find(x => x.id === id);
+  if (!l) return;
+  showConfirm(
+    'Remover Link',
+    `Tem certeza que deseja remover <strong>${esc(l.title)}</strong>? Esta ação não pode ser desfeita.`,
+    () => { links = links.filter(x => x.id !== id); save(); render(); toast('Link removido.'); }
+  );
+}
+
+function confirmDeleteSection(id) {
+  const sec = sections.find(s => s.id === id);
+  if (!sec) return;
+  const count = links.filter(l => l.section === id).length;
+  showConfirm(
+    'Remover Seção',
+    `Tem certeza que deseja remover <strong>${esc(sec.name)}</strong>?${count ? ` Os <strong>${count}</strong> links desta seção também serão removidos.` : ''} Esta ação não pode ser desfeita.`,
+    () => {
+      sections = sections.filter(s => s.id !== id);
+      links = links.filter(l => l.section !== id);
+      if (activeNav === id) activeNav = 'all';
+      save(); render(); toast('Seção removida.');
+    }
+  );
+}
+
+function showConfirm(title, body, cb) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-body').innerHTML = body;
+  confirmCb = cb;
+  openModal('confirm-modal');
+}
+document.getElementById('confirm-ok').addEventListener('click', () => {
+  if (confirmCb) { confirmCb(); confirmCb = null; }
+  closeModal('confirm-modal');
+});
+
+/* ════════════════════════════════════════
+   TOGGLE PIN
+════════════════════════════════════════ */
+function togglePin(id) {
+  const idx = links.findIndex(l => l.id === id);
+  if (idx < 0) return;
+  links[idx].pinned = !links[idx].pinned;
+  save(); render();
+  toast(links[idx].pinned ? '📌 Link fixado.' : 'Link desafixado.');
+}
+
+/* ════════════════════════════════════════
+   MODAL HELPERS
+════════════════════════════════════════ */
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('[data-close]').forEach(btn => {
+  btn.addEventListener('click', () => closeModal(btn.dataset.close));
+});
+document.querySelectorAll('.backdrop').forEach(bd => {
+  bd.addEventListener('click', e => { if (e.target === bd) closeModal(bd.id); });
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.backdrop.open').forEach(bd => closeModal(bd.id));
+});
+
+/* ════════════════════════════════════════
+   EVENTS
+════════════════════════════════════════ */
+document.getElementById('btn-new-link').addEventListener('click', () => openAddLink());
+document.getElementById('btn-new-section').addEventListener('click', openAddSection);
+document.getElementById('btn-sidebar-add-section').addEventListener('click', sidebarAddSection);
+document.getElementById('new-section-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sidebarAddSection(); } });
+document.getElementById('search').addEventListener('input', () => { activeNav = 'all'; render(); });
+
+/* ════════════════════════════════════════
+   TOAST
+════════════════════════════════════════ */
+function toast(msg, type = 'ok') {
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 2800);
+}
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+render();
+</script>
+</body>
+</html>
